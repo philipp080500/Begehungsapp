@@ -63,6 +63,22 @@ body {
 .topbar-title {
   font-weight: 700;
   font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-logo {
+  height: 26px;
+  width: auto;
+  display: block;
+  border-radius: 4px;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 #app {

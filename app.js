@@ -1298,6 +1298,7 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btnCancelEditPunkt").addEventListener("click", resetPunktForm);
   document.getElementById("btnCreatePdf").addEventListener("click", createPdf);
 
+  document.getElementById("btnRefresh").addEventListener("click", () => location.reload());
   document.getElementById("btnSettings").addEventListener("click", openSettingsModal);
   document.getElementById("btnSettingsCancel").addEventListener("click", () => {
     document.getElementById("settingsModal").hidden = true;
