@@ -69,10 +69,10 @@ body {
 }
 
 .topbar-logo {
-  height: 26px;
+  height: 18px;
   width: auto;
   display: block;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .topbar-actions {
