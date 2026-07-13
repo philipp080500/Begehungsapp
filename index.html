@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Begehungs-App | Arbeitsschutz</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1f6feb">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Begehungs-App">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-title">🦺 Begehungs-App</div>
+  <button id="btnSettings" class="icon-btn" title="Einstellungen (API-Key)">⚙️</button>
+</header>
+
+<main id="app">
+
+  <div id="tabBar" class="tabbar">
+    <button id="tabBtnBegehungen" class="tab-btn active">Begehungen</button>
+    <button id="tabBtnUnternehmen" class="tab-btn">Unternehmen</button>
+  </div>
+
+  <!-- ===================== START-BILDSCHIRM ===================== -->
+  <section id="view-start" class="view">
+    <div class="card">
+      <h2>Begehungen</h2>
+      <p class="muted">Alle Daten werden nur lokal in diesem Browser gespeichert.</p>
+      <button id="btnNewBegehung" class="btn btn-primary">+ Neue Begehung starten</button>
+    </div>
+    <div id="begehungList" class="begehung-list"></div>
+  </section>
+
+  <!-- ===================== UNTERNEHMEN-VERWALTUNG ===================== -->
+  <section id="view-unternehmen" class="view" hidden>
+    <div class="card">
+      <h2>Unternehmen</h2>
+      <p class="muted">Name, Adresse, Ansprechpartner und Logo hinterlegen – bei jeder Begehung auswählbar, PDF wird automatisch damit befüllt.</p>
+      <button id="btnNewUnternehmen" class="btn btn-primary">+ Neues Unternehmen</button>
+    </div>
+    <div id="unternehmenList" class="begehung-list"></div>
+  </section>
+
+  <!-- ===================== BEGEHUNG ERFASSEN ===================== -->
+  <section id="view-begehung" class="view" hidden>
+    <div class="card">
+      <button id="btnBackToStart" class="btn btn-ghost">← Zur Übersicht</button>
+      <h2>Begehungsdaten</h2>
+
+      <div class="form-grid">
+        <label>Art der Begehung
+          <select id="metaArt">
+            <option value="Brandschutzbegehung">Brandschutzbegehung</option>
+            <option value="Arbeitsschutzbegehung">Arbeitsschutzbegehung</option>
+          </select>
+        </label>
+        <label>Jahr
+          <input type="number" id="metaJahr" placeholder="2026">
+        </label>
+        <label>Nummer
+          <input type="number" id="metaNummer" min="1" placeholder="1">
+        </label>
+      </div>
+      <div class="bezeichnung-display" id="metaBezeichnung">Brandschutzbegehung 2026-1</div>
+
+      <div class="form-grid" style="margin-top:14px;">
+        <label>Unternehmen
+          <select id="metaUnternehmenId">
+            <option value="">— Kein Unternehmen / manuell —</option>
+          </select>
+        </label>
+        <label>Standort / Zusatz
+          <input type="text" id="metaBetrieb" placeholder="z.B. Halle 3, Erdgeschoss (optional)">
+        </label>
+        <label>Datum
+          <input type="date" id="metaDatum">
+        </label>
+        <label>Begeher/in
+          <input type="text" id="metaBegeher" placeholder="Name">
+        </label>
+        <label>Teilnehmer (optional)
+          <input type="text" id="metaTeilnehmer" placeholder="weitere Teilnehmer">
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Neuen Punkt erfassen</h2>
+      <div class="form-grid">
+        <label>Kategorie
+          <select id="pKategorie">
+            <option>Mechanische Gefährdung</option>
+            <option>Arbeitsumgebungsbedingungen</option>
+            <option>Gefahrstoffe</option>
+            <option>Elektrische Gefährdung</option>
+            <option>Physikalische Einwirkungen</option>
+            <option>Physische Belastung</option>
+            <option>Brand- und Explosionsgefährdung</option>
+            <option>Organisation</option>
+            <option>Psychische Belastungen</option>
+            <option>Thermische Gefährdung</option>
+            <option>Wahrnehmung und Handhabbarkeit</option>
+            <option>Sonstige</option>
+          </select>
+        </label>
+        <label>Standort / Bereich
+          <input type="text" id="pStandort" placeholder="z.B. Lager Halle 2, Regal 4">
+        </label>
+      </div>
+
+      <label class="block-label">Notiz (Stichpunkte reichen)
+        <div class="textarea-with-mic">
+          <textarea id="pNotiz" rows="3" placeholder="z.B. Fluchtweg zugestellt mit Paletten, Fluchtwegschild verdeckt"></textarea>
+          <button id="btnMic" class="icon-btn mic-btn" title="Spracheingabe">🎤</button>
+        </div>
+        <span id="micStatus" class="muted small"></span>
+      </label>
+
+      <label class="block-label">Fotos
+        <input type="file" id="pFotos" accept="image/*" capture="environment" multiple>
+      </label>
+      <div id="fotoPreview" class="foto-preview"></div>
+
+      <button id="btnAiEnhance" class="btn btn-secondary">✨ Mit KI aufwerten</button>
+      <span id="aiStatus" class="muted small"></span>
+
+      <label class="block-label">Befund (formuliert)
+        <textarea id="pBefund" rows="3"></textarea>
+      </label>
+
+      <div class="risk-picker-block">
+        <div class="block-label">Risiko zum Zeitpunkt der Begehung (Risikomatrix nach Nohl)</div>
+        <div class="form-grid">
+          <label>Schadensausmaß
+            <select id="pInitS">
+              <option value="1">1 – Leichte Verletzungen/Erkrankungen</option>
+              <option value="2">2 – Mittelschwere Verletzungen/Erkrankungen</option>
+              <option value="3">3 – Schwere Verletzung/Bleibende Schäden</option>
+              <option value="4">4 – Möglicher Tod, Katastrophe</option>
+            </select>
+          </label>
+          <label>Eintrittswahrscheinlichkeit
+            <select id="pInitW">
+              <option value="0">0 – Sehr gering</option>
+              <option value="1">1 – Gering</option>
+              <option value="2">2 – Mittel</option>
+              <option value="3">3 – Hoch</option>
+            </select>
+          </label>
+        </div>
+        <span id="pInitRiskBadge" class="risk-badge risk-gering">Risiko: GERING</span>
+      </div>
+
+      <div class="block-label" style="margin-top:18px;">Maßnahmen</div>
+      <div id="massnahmenList"></div>
+      <button id="btnAddMassnahme" class="btn btn-ghost">+ Weitere Maßnahme</button>
+
+      <div style="margin-top:16px;">
+        <button id="btnAddPunkt" class="btn btn-primary">+ Punkt hinzufügen</button>
+        <button id="btnCancelEditPunkt" class="btn btn-ghost" hidden>Bearbeitung abbrechen</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Erfasste Punkte (<span id="punkteCount">0</span>)</h2>
+      <div id="punkteList" class="punkte-list"></div>
+    </div>
+
+    <div class="card">
+      <button id="btnCreatePdf" class="btn btn-primary btn-big">📄 PDF-Protokoll erstellen</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===================== SETTINGS MODAL ===================== -->
+<div id="settingsModal" class="modal" hidden>
+  <div class="modal-content">
+    <h2>KI-Einstellungen</h2>
+    <p class="muted small">Der API-Key wird nur lokal in diesem Browser gespeichert (localStorage) und ausschließlich direkt an den gewählten Anbieter gesendet.</p>
+    <label>Anbieter
+      <select id="settProvider">
+        <option value="anthropic">Anthropic (Claude)</option>
+        <option value="openai">OpenAI</option>
+        <option value="none">Kein KI-Anbieter (nur manuell erfassen)</option>
+      </select>
+    </label>
+    <label>Modell
+      <input type="text" id="settModel" placeholder="z.B. claude-sonnet-5">
+    </label>
+    <label>API-Key
+      <input type="password" id="settApiKey" placeholder="sk-...">
+    </label>
+    <div class="modal-actions">
+      <button id="btnSettingsCancel" class="btn btn-ghost">Abbrechen</button>
+      <button id="btnSettingsSave" class="btn btn-primary">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== UNTERNEHMEN MODAL ===================== -->
+<div id="unternehmenModal" class="modal" hidden>
+  <div class="modal-content">
+    <h2 id="unternehmenModalTitle">Neues Unternehmen</h2>
+    <label>Name
+      <input type="text" id="uName" placeholder="Firmenname">
+    </label>
+    <label>Adresse
+      <textarea id="uAdresse" rows="2" placeholder="Straße Hausnummer, PLZ Ort"></textarea>
+    </label>
+    <label>Ansprechpartner
+      <input type="text" id="uAnsprechpartner" placeholder="Name">
+    </label>
+    <label>Kontakt (Telefon/E-Mail)
+      <input type="text" id="uKontakt" placeholder="optional">
+    </label>
+    <label>Logo
+      <input type="file" id="uLogo" accept="image/*">
+    </label>
+    <div id="uLogoPreview" class="foto-preview"></div>
+    <div class="modal-actions">
+      <button id="btnUnternehmenCancel" class="btn btn-ghost">Abbrechen</button>
+      <button id="btnUnternehmenSave" class="btn btn-primary">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
