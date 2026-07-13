@@ -48,7 +48,7 @@
 
   <!-- ===================== BEGEHUNG ERFASSEN ===================== -->
   <section id="view-begehung" class="view" hidden>
-    <div class="card">
+    <div class="card card--accent-top">
       <button id="btnBackToStart" class="btn btn-ghost">← Zur Übersicht</button>
       <h2>Begehungsdaten</h2>
 
@@ -91,50 +91,62 @@
 
     <div class="card">
       <h2>Neuen Punkt erfassen</h2>
-      <div class="form-grid">
-        <label>Kategorie
-          <select id="pKategorie">
-            <option>Mechanische Gefährdung</option>
-            <option>Arbeitsumgebungsbedingungen</option>
-            <option>Gefahrstoffe</option>
-            <option>Elektrische Gefährdung</option>
-            <option>Physikalische Einwirkungen</option>
-            <option>Physische Belastung</option>
-            <option>Brand- und Explosionsgefährdung</option>
-            <option>Organisation</option>
-            <option>Psychische Belastungen</option>
-            <option>Thermische Gefährdung</option>
-            <option>Wahrnehmung und Handhabbarkeit</option>
-            <option>Sonstige</option>
-          </select>
-        </label>
-        <label>Standort / Bereich
-          <input type="text" id="pStandort" placeholder="z.B. Lager Halle 2, Regal 4">
+
+      <div class="section-block section-block--dark">
+        <div class="section-label">📋 Grunddaten</div>
+        <div class="form-grid">
+          <label>Kategorie
+            <select id="pKategorie">
+              <option>Mechanische Gefährdung</option>
+              <option>Arbeitsumgebungsbedingungen</option>
+              <option>Gefahrstoffe</option>
+              <option>Elektrische Gefährdung</option>
+              <option>Physikalische Einwirkungen</option>
+              <option>Physische Belastung</option>
+              <option>Brand- und Explosionsgefährdung</option>
+              <option>Organisation</option>
+              <option>Psychische Belastungen</option>
+              <option>Thermische Gefährdung</option>
+              <option>Wahrnehmung und Handhabbarkeit</option>
+              <option>Sonstige</option>
+            </select>
+          </label>
+          <label>Standort / Bereich
+            <input type="text" id="pStandort" placeholder="z.B. Lager Halle 2, Regal 4">
+          </label>
+        </div>
+      </div>
+
+      <div class="section-block section-block--blue">
+        <div class="section-label">📝 Notiz</div>
+        <label>Stichpunkte reichen
+          <div class="textarea-with-mic">
+            <textarea id="pNotiz" rows="3" placeholder="z.B. Fluchtweg zugestellt mit Paletten, Fluchtwegschild verdeckt"></textarea>
+            <button id="btnMic" class="icon-btn mic-btn" title="Spracheingabe">🎤</button>
+          </div>
+          <span id="micStatus" class="muted small"></span>
         </label>
       </div>
 
-      <label class="block-label">Notiz (Stichpunkte reichen)
-        <div class="textarea-with-mic">
-          <textarea id="pNotiz" rows="3" placeholder="z.B. Fluchtweg zugestellt mit Paletten, Fluchtwegschild verdeckt"></textarea>
-          <button id="btnMic" class="icon-btn mic-btn" title="Spracheingabe">🎤</button>
-        </div>
-        <span id="micStatus" class="muted small"></span>
-      </label>
+      <div class="section-block section-block--gray">
+        <div class="section-label">📷 Fotos</div>
+        <label>
+          <input type="file" id="pFotos" accept="image/*" capture="environment" multiple>
+        </label>
+        <div id="fotoPreview" class="foto-preview"></div>
+      </div>
 
-      <label class="block-label">Fotos
-        <input type="file" id="pFotos" accept="image/*" capture="environment" multiple>
-      </label>
-      <div id="fotoPreview" class="foto-preview"></div>
+      <div class="section-block section-block--blue section-block--tinted">
+        <div class="section-label">✨ KI-Aufwertung &amp; Befund</div>
+        <button id="btnAiEnhance" class="btn btn-secondary">✨ Mit KI aufwerten</button>
+        <span id="aiStatus" class="muted small"></span>
+        <label class="block-label">Befund (formuliert)
+          <textarea id="pBefund" rows="3"></textarea>
+        </label>
+      </div>
 
-      <button id="btnAiEnhance" class="btn btn-secondary">✨ Mit KI aufwerten</button>
-      <span id="aiStatus" class="muted small"></span>
-
-      <label class="block-label">Befund (formuliert)
-        <textarea id="pBefund" rows="3"></textarea>
-      </label>
-
-      <div class="risk-picker-block">
-        <div class="block-label">Risiko zum Zeitpunkt der Begehung (Risikomatrix nach Nohl)</div>
+      <div class="section-block section-block--dark">
+        <div class="section-label">⚠️ Risiko zum Zeitpunkt der Begehung (Nohl-Matrix)</div>
         <div class="form-grid">
           <label>Schadensausmaß
             <select id="pInitS">
@@ -156,11 +168,13 @@
         <span id="pInitRiskBadge" class="risk-badge risk-gering">Risiko: GERING</span>
       </div>
 
-      <div class="block-label" style="margin-top:18px;">Maßnahmen</div>
-      <div id="massnahmenList"></div>
-      <button id="btnAddMassnahme" class="btn btn-ghost">+ Weitere Maßnahme</button>
+      <div class="section-block section-block--dark">
+        <div class="section-label">🔧 Maßnahmen</div>
+        <div id="massnahmenList"></div>
+        <button id="btnAddMassnahme" class="btn btn-ghost">+ Weitere Maßnahme</button>
+      </div>
 
-      <div style="margin-top:16px;">
+      <div class="punkt-actions-bar">
         <button id="btnAddPunkt" class="btn btn-primary">+ Punkt hinzufügen</button>
         <button id="btnCancelEditPunkt" class="btn btn-ghost" hidden>Bearbeitung abbrechen</button>
       </div>
