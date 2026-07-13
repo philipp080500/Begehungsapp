@@ -52,7 +52,13 @@
       <button id="btnBackToStart" class="btn btn-ghost">← Zur Übersicht</button>
       <h2>Begehungsdaten</h2>
 
-      <div class="form-grid">
+      <label class="block-label">Unternehmen
+        <select id="metaUnternehmenId">
+          <option value="">— Kein Unternehmen / manuell —</option>
+        </select>
+      </label>
+
+      <div class="form-grid" style="margin-top:14px;">
         <label>Art der Begehung
           <select id="metaArt">
             <option value="Brandschutzbegehung">Brandschutzbegehung</option>
@@ -67,13 +73,9 @@
         </label>
       </div>
       <div class="bezeichnung-display" id="metaBezeichnung">Brandschutzbegehung 2026-1</div>
+      <p class="muted small">Die Nummer zählt fortlaufend je Unternehmen (nicht unternehmensübergreifend).</p>
 
       <div class="form-grid" style="margin-top:14px;">
-        <label>Unternehmen
-          <select id="metaUnternehmenId">
-            <option value="">— Kein Unternehmen / manuell —</option>
-          </select>
-        </label>
         <label>Standort / Zusatz
           <input type="text" id="metaBetrieb" placeholder="z.B. Halle 3, Erdgeschoss (optional)">
         </label>
@@ -84,7 +86,7 @@
           <input type="text" id="metaBegeher" placeholder="Name">
         </label>
         <label>Teilnehmer (optional)
-          <input type="text" id="metaTeilnehmer" placeholder="weitere Teilnehmer">
+          <input type="text" id="metaTeilnehmer" placeholder="mitbegehende Person">
         </label>
       </div>
     </div>

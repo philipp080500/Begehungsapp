@@ -405,9 +405,14 @@ function updateBezeichnungDisplay() {
   document.getElementById("metaBezeichnung").textContent = bezeichnung(meta);
 }
 
-async function suggestNextNummer(art, jahr) {
+async function suggestNextNummer(art, jahr, unternehmenId) {
   const all = await dbGetAll();
-  const relevant = all.filter(b => b.meta.art === art && String(b.meta.jahr) === String(jahr) && b.id !== (currentBegehung && currentBegehung.id));
+  const relevant = all.filter(b =>
+    b.meta.art === art &&
+    String(b.meta.jahr) === String(jahr) &&
+    (b.meta.unternehmenId || "") === (unternehmenId || "") &&
+    b.id !== (currentBegehung && currentBegehung.id)
+  );
   const maxNummer = relevant.reduce((max, b) => Math.max(max, Number(b.meta.nummer) || 0), 0);
   return maxNummer + 1;
 }
@@ -417,7 +422,8 @@ async function refreshNummerSuggestion() {
   if (nummerInput.value) return; // Nutzer hat bereits einen Wert gesetzt
   const art = document.getElementById("metaArt").value;
   const jahr = document.getElementById("metaJahr").value;
-  nummerInput.value = await suggestNextNummer(art, jahr);
+  const unternehmenId = document.getElementById("metaUnternehmenId").value;
+  nummerInput.value = await suggestNextNummer(art, jahr, unternehmenId);
   updateBezeichnungDisplay();
 }
 
@@ -1235,6 +1241,17 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("metaJahr").addEventListener("change", () => {
     document.getElementById("metaNummer").value = "";
     refreshNummerSuggestion().then(persistMeta);
+  });
+  document.getElementById("metaUnternehmenId").addEventListener("change", async () => {
+    const unternehmenId = document.getElementById("metaUnternehmenId").value;
+    const teilnehmerInput = document.getElementById("metaTeilnehmer");
+    if (!teilnehmerInput.value.trim()) {
+      const unternehmen = await getUnternehmenById(unternehmenId);
+      if (unternehmen && unternehmen.ansprechpartner) teilnehmerInput.value = unternehmen.ansprechpartner;
+    }
+    document.getElementById("metaNummer").value = "";
+    await refreshNummerSuggestion();
+    persistMeta();
   });
   document.getElementById("metaNummer").addEventListener("input", updateBezeichnungDisplay);
   document.getElementById("metaDatum").addEventListener("change", renderMassnahmenForm);
