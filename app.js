@@ -449,7 +449,6 @@ async function openBegehung(b) {
   document.getElementById("metaJahr").value = b.meta.jahr || new Date().getFullYear();
   document.getElementById("metaNummer").value = b.meta.nummer || "";
   document.getElementById("metaUnternehmenId").value = b.meta.unternehmenId || "";
-  document.getElementById("metaBetrieb").value = b.meta.betrieb || "";
   document.getElementById("metaDatum").value = b.meta.datum || "";
   document.getElementById("metaBegeher").value = b.meta.begeher || "";
   document.getElementById("metaTeilnehmer").value = b.meta.teilnehmer || "";
@@ -474,7 +473,6 @@ async function createNewBegehung() {
   document.getElementById("metaJahr").value = jahr;
   document.getElementById("metaNummer").value = "";
   document.getElementById("metaUnternehmenId").value = "";
-  document.getElementById("metaBetrieb").value = "";
   document.getElementById("metaDatum").value = currentBegehung.meta.datum;
   document.getElementById("metaBegeher").value = "";
   document.getElementById("metaTeilnehmer").value = "";
@@ -492,7 +490,6 @@ function persistMeta() {
   currentBegehung.meta.jahr = document.getElementById("metaJahr").value;
   currentBegehung.meta.nummer = document.getElementById("metaNummer").value;
   currentBegehung.meta.unternehmenId = document.getElementById("metaUnternehmenId").value;
-  currentBegehung.meta.betrieb = document.getElementById("metaBetrieb").value;
   currentBegehung.meta.datum = document.getElementById("metaDatum").value;
   currentBegehung.meta.begeher = document.getElementById("metaBegeher").value;
   currentBegehung.meta.teilnehmer = document.getElementById("metaTeilnehmer").value;
@@ -1147,6 +1144,7 @@ async function renderMassnahmenListe() {
       </div>
       <p class="massnahmenliste-text">${escapeHtml(m.text)}</p>
       <p class="muted small">Verantwortlich: ${escapeHtml(m.verantwortlicher || "-")} · Frist: ${escapeHtml(FRIST_LABELS[m.frist] || m.frist || "-")} · Zieltermin: ${escapeHtml(formatDateEuropean(m.zieltermin) || "-")} ${rNachHtml}</p>
+      ${(punkt.fotos && punkt.fotos.length) ? `<div class="punkt-thumbs">${punkt.fotos.map(f => `<img src="${f}">`).join("")}</div>` : ""}
       <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${fortschritt}%; background:${FORTSCHRITT_FARBEN[fortschritt]}"></div></div>
       <div class="form-grid" style="margin-top:8px;">
         <label>Fortschritt
@@ -1441,7 +1439,7 @@ window.addEventListener("DOMContentLoaded", () => {
     renderBegehungList();
   });
 
-  ["metaArt", "metaJahr", "metaNummer", "metaUnternehmenId", "metaBetrieb", "metaDatum", "metaBegeher", "metaTeilnehmer"].forEach(id => {
+  ["metaArt", "metaJahr", "metaNummer", "metaUnternehmenId", "metaDatum", "metaBegeher", "metaTeilnehmer"].forEach(id => {
     document.getElementById(id).addEventListener("change", persistMeta);
   });
   document.getElementById("metaArt").addEventListener("change", () => {
