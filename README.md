@@ -28,6 +28,10 @@ Im Reiter **"Unternehmen"** (oben neben "Begehungen") kannst du beliebig viele U
 
 Bei jeder Begehung kannst du im Feld "Unternehmen" eines davon auswählen. Das PDF-Protokoll übernimmt dann automatisch dessen Logo (statt des globalen `logo.jpg`), Namen, Adresse und Ansprechpartner in der Kopfzeile – ohne die Daten erneut eintippen zu müssen. Ohne Auswahl ("— Kein Unternehmen / manuell —") funktioniert die App wie zuvor mit freier Texteingabe.
 
+## Maßnahmenliste
+
+Im Reiter **"Maßnahmen"** siehst du eine eigene, laufend pflegbare Liste je Unternehmen (oder "— Ohne Unternehmen —" für manuell erfasste Begehungen) über alle Begehungen dieses Kunden hinweg – ähnlich einer Microsoft-Lists-Ansicht. Fortschritt (0/25/50/75/100 %) und "Wirksamkeitskontrolle durch SiFa" lassen sich direkt in der Liste eintragen, ohne die jeweilige Begehung zu öffnen. Überfällige Maßnahmen (Zieltermin verstrichen, aber noch nicht bei 100 %) werden rot markiert. Das PDF-Protokoll bleibt davon unabhängig das offizielle, unterschriebene Dokument.
+
 ## Ablauf einer Begehung
 
 1. "Neue Begehung starten", Unternehmen auswählen (optional) sowie Datum/Begeher eintragen.

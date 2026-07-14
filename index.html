@@ -26,6 +26,7 @@
 
   <div id="tabBar" class="tabbar">
     <button id="tabBtnBegehungen" class="tab-btn active">Begehungen</button>
+    <button id="tabBtnMassnahmen" class="tab-btn">Maßnahmen</button>
     <button id="tabBtnUnternehmen" class="tab-btn">Unternehmen</button>
   </div>
 
@@ -37,6 +38,20 @@
       <button id="btnNewBegehung" class="btn btn-primary">+ Neue Begehung starten</button>
     </div>
     <div id="begehungList" class="begehung-list"></div>
+  </section>
+
+  <!-- ===================== MASSNAHMENLISTE ===================== -->
+  <section id="view-massnahmen" class="view" hidden>
+    <div class="card">
+      <h2>Maßnahmen</h2>
+      <p class="muted">Eigene Liste je Unternehmen, über alle Begehungen hinweg. Fortschritt und Wirksamkeitskontrolle direkt hier pflegbar.</p>
+      <label>Unternehmen
+        <select id="massnahmenUnternehmenFilter">
+          <option value="">— Unternehmen wählen —</option>
+        </select>
+      </label>
+    </div>
+    <div id="massnahmenListeContainer"></div>
   </section>
 
   <!-- ===================== UNTERNEHMEN-VERWALTUNG ===================== -->

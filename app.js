@@ -378,14 +378,19 @@ async function populateUnternehmenSelect() {
 }
 
 /* =========================================================
-   Tab-Umschaltung (Begehungen / Unternehmen)
+   Tab-Umschaltung (Begehungen / Maßnahmen / Unternehmen)
    ========================================================= */
 function switchTab(tab) {
   document.getElementById("tabBtnBegehungen").classList.toggle("active", tab === "begehungen");
+  document.getElementById("tabBtnMassnahmen").classList.toggle("active", tab === "massnahmen");
   document.getElementById("tabBtnUnternehmen").classList.toggle("active", tab === "unternehmen");
   if (tab === "unternehmen") {
     showView("view-unternehmen");
     renderUnternehmenList();
+  } else if (tab === "massnahmen") {
+    showView("view-massnahmen");
+    populateMassnahmenUnternehmenFilter();
+    renderMassnahmenListe();
   } else {
     showView("view-start");
     renderBegehungList();
@@ -541,8 +546,15 @@ function updateInitRiskBadge() {
   badge.className = `risk-badge risk-${risk.key}`;
 }
 
+const FORTSCHRITT_STUFEN = [0, 25, 50, 75, 100];
+
+function clampFortschritt(v) {
+  const n = Number(v);
+  return FORTSCHRITT_STUFEN.includes(n) ? n : 0;
+}
+
 function leereMassnahme() {
-  return { id: uid(), text: "", verantwortlicher: "", frist: "kurzfristig", sNach: 1, wNach: 0 };
+  return { id: uid(), text: "", verantwortlicher: "", frist: "kurzfristig", sNach: 1, wNach: 0, fortschritt: 0, wirksamkeitskontrolle: "" };
 }
 
 function renderMassnahmenForm() {
@@ -586,6 +598,16 @@ function renderMassnahmenForm() {
         </label>
       </div>
       <span class="risk-badge risk-${risk.key}">Risiko nach Maßnahme: ${risk.label.toUpperCase()}</span>
+      <div class="form-grid" style="margin-top:10px;">
+        <label>Fortschritt
+          <select data-field="fortschritt" data-idx="${idx}">
+            ${FORTSCHRITT_STUFEN.map(v => `<option value="${v}" ${clampFortschritt(m.fortschritt) === v ? "selected" : ""}>${v}%</option>`).join("")}
+          </select>
+        </label>
+        <label>Wirksamkeitskontrolle durch SiFa
+          <input type="text" data-field="wirksamkeitskontrolle" data-idx="${idx}" value="${escapeHtml(m.wirksamkeitskontrolle || "")}" placeholder="z.B. wirksam, geprüft am ...">
+        </label>
+      </div>
     `;
     wrap.appendChild(div);
   });
@@ -848,6 +870,8 @@ function startEditPunkt(p) {
         frist: m.frist || "kurzfristig",
         sNach: m.risikoNach ? clampS(m.risikoNach.s) : 1,
         wNach: m.risikoNach ? clampW(m.risikoNach.w) : 0,
+        fortschritt: clampFortschritt(m.fortschritt),
+        wirksamkeitskontrolle: m.wirksamkeitskontrolle || "",
       }))
     : [leereMassnahme(), leereMassnahme()];
   renderMassnahmenForm();
@@ -873,6 +897,8 @@ function addPunkt() {
       frist: m.frist,
       zieltermin: berechneZieltermin(begehungsDatum, m.frist),
       risikoNach: { s: clampS(m.sNach), w: clampW(m.wNach) },
+      fortschritt: clampFortschritt(m.fortschritt),
+      wirksamkeitskontrolle: (m.wirksamkeitskontrolle || "").trim(),
     }));
 
   const gemeinsameFelder = {
@@ -912,8 +938,8 @@ function punktInitialRisk(p) {
 }
 
 function punktMassnahmen(p) {
-  if (p.massnahmen) return p.massnahmen;
-  if (p.massnahme) return [{ text: p.massnahme, frist: p.frist, zieltermin: "", risikoNach: null }];
+  if (p.massnahmen) return p.massnahmen.map(m => ({ fortschritt: 0, wirksamkeitskontrolle: "", ...m }));
+  if (p.massnahme) return [{ id: p.id + "_legacy", text: p.massnahme, frist: p.frist, zieltermin: "", risikoNach: null, fortschritt: 0, wirksamkeitskontrolle: "" }];
   return [];
 }
 
@@ -933,7 +959,8 @@ function renderPunkteList() {
         : "";
       return `<div class="massnahme-display">
         <p><b>Maßnahme ${mi + 1}:</b> ${escapeHtml(m.text)}</p>
-        <p class="muted small">Verantwortlich: ${escapeHtml(m.verantwortlicher || "-")} · Frist: ${escapeHtml(FRIST_LABELS[m.frist] || m.frist || "-")} · Zieltermin: ${escapeHtml(formatDateEuropean(m.zieltermin) || "-")}</p>
+        <p class="muted small">Verantwortlich: ${escapeHtml(m.verantwortlicher || "-")} · Frist: ${escapeHtml(FRIST_LABELS[m.frist] || m.frist || "-")} · Zieltermin: ${escapeHtml(formatDateEuropean(m.zieltermin) || "-")} · Fortschritt: ${clampFortschritt(m.fortschritt)}%</p>
+        ${m.wirksamkeitskontrolle ? `<p class="muted small">Wirksamkeitskontrolle SiFa: ${escapeHtml(m.wirksamkeitskontrolle)}</p>` : ""}
         ${rBadge}
       </div>`;
     }).join("");
@@ -964,6 +991,107 @@ function renderPunkteList() {
       }
     });
     list.appendChild(div);
+  });
+}
+
+/* =========================================================
+   Maßnahmenliste (pro Unternehmen, über alle Begehungen hinweg)
+   ========================================================= */
+const NONE_UNTERNEHMEN_VALUE = "__ohne__";
+
+async function populateMassnahmenUnternehmenFilter() {
+  const select = document.getElementById("massnahmenUnternehmenFilter");
+  const currentValue = select.value;
+  const all = (await dbGetAll(UNTERNEHMEN_STORE)).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  select.innerHTML = '<option value="">— Unternehmen wählen —</option>' +
+    all.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join("") +
+    `<option value="${NONE_UNTERNEHMEN_VALUE}">— Ohne Unternehmen —</option>`;
+  if (currentValue && (currentValue === NONE_UNTERNEHMEN_VALUE || all.some(u => u.id === currentValue))) {
+    select.value = currentValue;
+  }
+}
+
+async function updateMassnahmeField(begehungId, punktId, massnahmeId, field, value) {
+  const begehung = await dbGet(begehungId);
+  if (!begehung) return;
+  const punkt = begehung.punkte.find(p => p.id === punktId);
+  if (!punkt) return;
+  if (!punkt.massnahmen) {
+    // Alter Punkt ohne Maßnahmen-Array (einzelnes Textfeld) - beim ersten Bearbeiten migrieren
+    punkt.massnahmen = punktMassnahmen(punkt).map(m => ({ ...m }));
+    delete punkt.massnahme;
+  }
+  const massnahme = punkt.massnahmen.find(m => m.id === massnahmeId);
+  if (!massnahme) return;
+  if (field === "fortschritt") {
+    massnahme.fortschritt = clampFortschritt(value);
+  } else if (field === "wirksamkeitskontrolle") {
+    massnahme.wirksamkeitskontrolle = value;
+  }
+  begehung.updatedAt = Date.now();
+  await dbPut(begehung);
+}
+
+async function renderMassnahmenListe() {
+  const container = document.getElementById("massnahmenListeContainer");
+  const selected = document.getElementById("massnahmenUnternehmenFilter").value;
+  container.innerHTML = "";
+  if (!selected) {
+    container.innerHTML = '<div class="empty-hint">Bitte oben ein Unternehmen wählen, um dessen Maßnahmenliste zu sehen.</div>';
+    return;
+  }
+
+  const alleBegehungen = await dbGetAll();
+  const passendeBegehungen = alleBegehungen.filter(b => {
+    const bUnternehmenId = b.meta.unternehmenId || "";
+    return selected === NONE_UNTERNEHMEN_VALUE ? !bUnternehmenId : bUnternehmenId === selected;
+  });
+
+  const zeilen = [];
+  passendeBegehungen.forEach(b => {
+    (b.punkte || []).forEach(p => {
+      punktMassnahmen(p).forEach(m => {
+        if (m.text) zeilen.push({ begehung: b, punkt: p, massnahme: m });
+      });
+    });
+  });
+
+  if (zeilen.length === 0) {
+    container.innerHTML = '<div class="empty-hint">Noch keine Maßnahmen für dieses Unternehmen erfasst.</div>';
+    return;
+  }
+
+  zeilen.sort((a, b) => (a.massnahme.zieltermin || "9999-99-99").localeCompare(b.massnahme.zieltermin || "9999-99-99"));
+
+  const heute = formatDateLocal(new Date());
+  zeilen.forEach(({ begehung, punkt, massnahme: m }) => {
+    const div = document.createElement("div");
+    div.className = "massnahmenliste-item";
+    const fortschritt = clampFortschritt(m.fortschritt);
+    const ueberfaellig = m.zieltermin && m.zieltermin < heute && fortschritt < 100;
+    const rNachHtml = m.risikoNach
+      ? (() => { const r = computeRisk(m.risikoNach.s, m.risikoNach.w); return `<span class="risk-badge risk-${r.key}">${r.label.toUpperCase()}</span>`; })()
+      : "";
+    div.innerHTML = `
+      <div class="massnahmenliste-header">
+        <span class="muted small">${escapeHtml(bezeichnung(begehung.meta))} · ${escapeHtml(formatDateEuropean(begehung.meta.datum))} · ${escapeHtml(punkt.kategorie)}${punkt.standort ? " – " + escapeHtml(punkt.standort) : ""}</span>
+        ${ueberfaellig ? '<span class="ueberfaellig-badge">Überfällig</span>' : ""}
+      </div>
+      <p class="massnahmenliste-text">${escapeHtml(m.text)}</p>
+      <p class="muted small">Verantwortlich: ${escapeHtml(m.verantwortlicher || "-")} · Frist: ${escapeHtml(FRIST_LABELS[m.frist] || m.frist || "-")} · Zieltermin: ${escapeHtml(formatDateEuropean(m.zieltermin) || "-")} ${rNachHtml}</p>
+      <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${fortschritt}%"></div></div>
+      <div class="form-grid" style="margin-top:8px;">
+        <label>Fortschritt
+          <select data-begehung="${begehung.id}" data-punkt="${punkt.id}" data-massnahme="${m.id}" data-field="fortschritt">
+            ${FORTSCHRITT_STUFEN.map(v => `<option value="${v}" ${fortschritt === v ? "selected" : ""}>${v}%</option>`).join("")}
+          </select>
+        </label>
+        <label>Wirksamkeitskontrolle durch SiFa
+          <input type="text" data-begehung="${begehung.id}" data-punkt="${punkt.id}" data-massnahme="${m.id}" data-field="wirksamkeitskontrolle" value="${escapeHtml(m.wirksamkeitskontrolle || "")}" placeholder="z.B. wirksam, geprüft am ...">
+        </label>
+      </div>
+    `;
+    container.appendChild(div);
   });
 }
 
@@ -1263,7 +1391,7 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("massnahmenList").addEventListener("input", (e) => {
     const idx = e.target.dataset.idx;
     const field = e.target.dataset.field;
-    if (idx === undefined || !field || (field !== "text" && field !== "verantwortlicher")) return;
+    if (idx === undefined || !field || !["text", "verantwortlicher", "wirksamkeitskontrolle"].includes(field)) return;
     currentMassnahmen[idx][field] = e.target.value;
   });
   document.getElementById("massnahmenList").addEventListener("change", (e) => {
@@ -1313,7 +1441,20 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("tabBtnBegehungen").addEventListener("click", () => switchTab("begehungen"));
+  document.getElementById("tabBtnMassnahmen").addEventListener("click", () => switchTab("massnahmen"));
   document.getElementById("tabBtnUnternehmen").addEventListener("click", () => switchTab("unternehmen"));
+
+  document.getElementById("massnahmenUnternehmenFilter").addEventListener("change", renderMassnahmenListe);
+  document.getElementById("massnahmenListeContainer").addEventListener("change", async (e) => {
+    const field = e.target.dataset.field;
+    if (!field) return;
+    await updateMassnahmeField(e.target.dataset.begehung, e.target.dataset.punkt, e.target.dataset.massnahme, field, e.target.value);
+    renderMassnahmenListe();
+  });
+  document.getElementById("massnahmenListeContainer").addEventListener("input", async (e) => {
+    if (e.target.dataset.field !== "wirksamkeitskontrolle") return;
+    await updateMassnahmeField(e.target.dataset.begehung, e.target.dataset.punkt, e.target.dataset.massnahme, "wirksamkeitskontrolle", e.target.value);
+  });
 
   document.getElementById("btnNewUnternehmen").addEventListener("click", () => openUnternehmenModal(null));
   document.getElementById("btnUnternehmenCancel").addEventListener("click", () => {
