@@ -165,6 +165,16 @@ function formatDateEuropean(isoDateStr) {
   return `${d}.${m}.${y}`;
 }
 
+// Formatiert einen Zeitstempel (Date.now()) als europäisches Datum mit Uhrzeit, für Kommentarverläufe.
+function formatDateTimeEuropean(timestamp) {
+  const d = new Date(timestamp);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${day}.${month}.${d.getFullYear()} ${hh}:${mm}`;
+}
+
 function berechneZieltermin(startDatum, frist) {
   const offset = FRIST_OFFSET[frist];
   if (!startDatum || !offset) return "";
@@ -554,7 +564,7 @@ function clampFortschritt(v) {
 }
 
 function leereMassnahme() {
-  return { id: uid(), text: "", verantwortlicher: "", frist: "kurzfristig", sNach: 1, wNach: 0, fortschritt: 0, wirksamkeitskontrolle: "" };
+  return { id: uid(), text: "", verantwortlicher: "", frist: "kurzfristig", sNach: 1, wNach: 0, fortschritt: 0, wirksamkeitskontrolle: "", kommentare: [] };
 }
 
 function renderMassnahmenForm() {
@@ -872,6 +882,7 @@ function startEditPunkt(p) {
         wNach: m.risikoNach ? clampW(m.risikoNach.w) : 0,
         fortschritt: clampFortschritt(m.fortschritt),
         wirksamkeitskontrolle: m.wirksamkeitskontrolle || "",
+        kommentare: m.kommentare || [],
       }))
     : [leereMassnahme(), leereMassnahme()];
   renderMassnahmenForm();
@@ -899,6 +910,7 @@ function addPunkt() {
       risikoNach: { s: clampS(m.sNach), w: clampW(m.wNach) },
       fortschritt: clampFortschritt(m.fortschritt),
       wirksamkeitskontrolle: (m.wirksamkeitskontrolle || "").trim(),
+      kommentare: m.kommentare || [],
     }));
 
   const gemeinsameFelder = {
@@ -938,8 +950,8 @@ function punktInitialRisk(p) {
 }
 
 function punktMassnahmen(p) {
-  if (p.massnahmen) return p.massnahmen.map(m => ({ fortschritt: 0, wirksamkeitskontrolle: "", ...m }));
-  if (p.massnahme) return [{ id: p.id + "_legacy", text: p.massnahme, frist: p.frist, zieltermin: "", risikoNach: null, fortschritt: 0, wirksamkeitskontrolle: "" }];
+  if (p.massnahmen) return p.massnahmen.map(m => ({ fortschritt: 0, wirksamkeitskontrolle: "", kommentare: [], ...m }));
+  if (p.massnahme) return [{ id: p.id + "_legacy", text: p.massnahme, frist: p.frist, zieltermin: "", risikoNach: null, fortschritt: 0, wirksamkeitskontrolle: "", kommentare: [] }];
   return [];
 }
 
@@ -1011,23 +1023,39 @@ async function populateMassnahmenUnternehmenFilter() {
   }
 }
 
-async function updateMassnahmeField(begehungId, punktId, massnahmeId, field, value) {
-  const begehung = await dbGet(begehungId);
-  if (!begehung) return;
+function findOrMigrateMassnahme(begehung, punktId, massnahmeId) {
   const punkt = begehung.punkte.find(p => p.id === punktId);
-  if (!punkt) return;
+  if (!punkt) return null;
   if (!punkt.massnahmen) {
     // Alter Punkt ohne Maßnahmen-Array (einzelnes Textfeld) - beim ersten Bearbeiten migrieren
     punkt.massnahmen = punktMassnahmen(punkt).map(m => ({ ...m }));
     delete punkt.massnahme;
   }
-  const massnahme = punkt.massnahmen.find(m => m.id === massnahmeId);
+  return punkt.massnahmen.find(m => m.id === massnahmeId) || null;
+}
+
+async function updateMassnahmeField(begehungId, punktId, massnahmeId, field, value) {
+  const begehung = await dbGet(begehungId);
+  if (!begehung) return;
+  const massnahme = findOrMigrateMassnahme(begehung, punktId, massnahmeId);
   if (!massnahme) return;
   if (field === "fortschritt") {
     massnahme.fortschritt = clampFortschritt(value);
   } else if (field === "wirksamkeitskontrolle") {
     massnahme.wirksamkeitskontrolle = value;
   }
+  begehung.updatedAt = Date.now();
+  await dbPut(begehung);
+}
+
+async function addMassnahmeKommentar(begehungId, punktId, massnahmeId, text) {
+  if (!text || !text.trim()) return;
+  const begehung = await dbGet(begehungId);
+  if (!begehung) return;
+  const massnahme = findOrMigrateMassnahme(begehung, punktId, massnahmeId);
+  if (!massnahme) return;
+  if (!massnahme.kommentare) massnahme.kommentare = [];
+  massnahme.kommentare.push({ id: uid(), text: text.trim(), datum: Date.now() });
   begehung.updatedAt = Date.now();
   await dbPut(begehung);
 }
@@ -1089,6 +1117,20 @@ async function renderMassnahmenListe() {
         <label>Wirksamkeitskontrolle durch SiFa
           <input type="text" data-begehung="${begehung.id}" data-punkt="${punkt.id}" data-massnahme="${m.id}" data-field="wirksamkeitskontrolle" value="${escapeHtml(m.wirksamkeitskontrolle || "")}" placeholder="z.B. wirksam, geprüft am ...">
         </label>
+      </div>
+      <div class="kommentar-block">
+        <div class="block-label">Verlauf / Kommentare</div>
+        <div class="kommentar-liste">
+          ${
+            (m.kommentare && m.kommentare.length)
+              ? [...m.kommentare].reverse().map(k => `<div class="kommentar-eintrag"><span class="kommentar-datum">${formatDateTimeEuropean(k.datum)}</span> ${escapeHtml(k.text)}</div>`).join("")
+              : '<p class="muted small">Noch keine Kommentare.</p>'
+          }
+        </div>
+        <div class="kommentar-add">
+          <input type="text" data-action="kommentar-input" data-begehung="${begehung.id}" data-punkt="${punkt.id}" data-massnahme="${m.id}" placeholder="Kommentar zur Abarbeitung hinzufügen...">
+          <button type="button" class="btn btn-ghost" data-action="add-kommentar" data-begehung="${begehung.id}" data-punkt="${punkt.id}" data-massnahme="${m.id}">+ Hinzufügen</button>
+        </div>
       </div>
     `;
     container.appendChild(div);
@@ -1454,6 +1496,21 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("massnahmenListeContainer").addEventListener("input", async (e) => {
     if (e.target.dataset.field !== "wirksamkeitskontrolle") return;
     await updateMassnahmeField(e.target.dataset.begehung, e.target.dataset.punkt, e.target.dataset.massnahme, "wirksamkeitskontrolle", e.target.value);
+  });
+  document.getElementById("massnahmenListeContainer").addEventListener("click", async (e) => {
+    const btn = e.target.closest('[data-action="add-kommentar"]');
+    if (!btn) return;
+    const input = btn.parentElement.querySelector('[data-action="kommentar-input"]');
+    if (!input || !input.value.trim()) return;
+    await addMassnahmeKommentar(btn.dataset.begehung, btn.dataset.punkt, btn.dataset.massnahme, input.value);
+    renderMassnahmenListe();
+  });
+  document.getElementById("massnahmenListeContainer").addEventListener("keydown", async (e) => {
+    if (e.target.dataset.action !== "kommentar-input" || e.key !== "Enter") return;
+    e.preventDefault();
+    if (!e.target.value.trim()) return;
+    await addMassnahmeKommentar(e.target.dataset.begehung, e.target.dataset.punkt, e.target.dataset.massnahme, e.target.value);
+    renderMassnahmenListe();
   });
 
   document.getElementById("btnNewUnternehmen").addEventListener("click", () => openUnternehmenModal(null));

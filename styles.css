@@ -414,6 +414,42 @@ input[type="file"] {
   transition: width 0.2s ease;
 }
 
+.kommentar-block {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.kommentar-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.kommentar-eintrag {
+  font-size: 0.88rem;
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.kommentar-datum {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+.kommentar-add {
+  display: flex;
+  gap: 8px;
+}
+.kommentar-add input { flex: 1; }
+.kommentar-add .btn { white-space: nowrap; margin: 0; }
+
 .punkt-body { margin-top: 8px; font-size: 0.9rem; }
 .punkt-body p { margin: 4px 0; }
 
