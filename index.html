@@ -45,11 +45,22 @@
     <div class="card">
       <h2>Maßnahmen</h2>
       <p class="muted">Eigene Liste je Unternehmen, über alle Begehungen hinweg. Fortschritt und Wirksamkeitskontrolle direkt hier pflegbar.</p>
-      <label>Unternehmen
-        <select id="massnahmenUnternehmenFilter">
-          <option value="">— Unternehmen wählen —</option>
-        </select>
-      </label>
+      <div class="form-grid">
+        <label>Unternehmen
+          <select id="massnahmenUnternehmenFilter">
+            <option value="">— Unternehmen wählen —</option>
+          </select>
+        </label>
+        <label>Verantwortlicher
+          <select id="massnahmenVerantwortlicherFilter">
+            <option value="">— Alle —</option>
+          </select>
+        </label>
+      </div>
+      <div class="massnahmen-status-filter">
+        <label class="checkbox-label"><input type="checkbox" id="massnahmenFilterOffen" checked> Offene Maßnahmen</label>
+        <label class="checkbox-label"><input type="checkbox" id="massnahmenFilterErledigt"> Erledigte Maßnahmen</label>
+      </div>
     </div>
     <div id="massnahmenListeContainer"></div>
   </section>

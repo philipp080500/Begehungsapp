@@ -1060,12 +1060,33 @@ async function addMassnahmeKommentar(begehungId, punktId, massnahmeId, text) {
   await dbPut(begehung);
 }
 
+async function removeMassnahmeKommentar(begehungId, punktId, massnahmeId, kommentarId) {
+  const begehung = await dbGet(begehungId);
+  if (!begehung) return;
+  const massnahme = findOrMigrateMassnahme(begehung, punktId, massnahmeId);
+  if (!massnahme || !massnahme.kommentare) return;
+  massnahme.kommentare = massnahme.kommentare.filter(k => k.id !== kommentarId);
+  begehung.updatedAt = Date.now();
+  await dbPut(begehung);
+}
+
+const FORTSCHRITT_FARBEN = { 0: "#d64545", 25: "#e8590c", 50: "#d9a91f", 75: "#8bc34a", 100: "#2f9e44" };
+
+async function populateMassnahmenVerantwortlicherFilter(zeilen) {
+  const select = document.getElementById("massnahmenVerantwortlicherFilter");
+  const currentValue = select.value;
+  const namen = [...new Set(zeilen.map(z => (z.massnahme.verantwortlicher || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  select.innerHTML = '<option value="">— Alle —</option>' + namen.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+  if (namen.includes(currentValue)) select.value = currentValue;
+}
+
 async function renderMassnahmenListe() {
   const container = document.getElementById("massnahmenListeContainer");
   const selected = document.getElementById("massnahmenUnternehmenFilter").value;
   container.innerHTML = "";
   if (!selected) {
     container.innerHTML = '<div class="empty-hint">Bitte oben ein Unternehmen wählen, um dessen Maßnahmenliste zu sehen.</div>';
+    document.getElementById("massnahmenVerantwortlicherFilter").innerHTML = '<option value="">— Alle —</option>';
     return;
   }
 
@@ -1075,17 +1096,35 @@ async function renderMassnahmenListe() {
     return selected === NONE_UNTERNEHMEN_VALUE ? !bUnternehmenId : bUnternehmenId === selected;
   });
 
-  const zeilen = [];
+  const alleZeilen = [];
   passendeBegehungen.forEach(b => {
     (b.punkte || []).forEach(p => {
       punktMassnahmen(p).forEach(m => {
-        if (m.text) zeilen.push({ begehung: b, punkt: p, massnahme: m });
+        if (m.text) alleZeilen.push({ begehung: b, punkt: p, massnahme: m });
       });
     });
   });
 
-  if (zeilen.length === 0) {
+  await populateMassnahmenVerantwortlicherFilter(alleZeilen);
+
+  const verantwortlicherFilter = document.getElementById("massnahmenVerantwortlicherFilter").value;
+  const zeigeOffen = document.getElementById("massnahmenFilterOffen").checked;
+  const zeigeErledigt = document.getElementById("massnahmenFilterErledigt").checked;
+
+  const zeilen = alleZeilen.filter(z => {
+    if (verantwortlicherFilter && (z.massnahme.verantwortlicher || "").trim() !== verantwortlicherFilter) return false;
+    const istErledigt = clampFortschritt(z.massnahme.fortschritt) === 100;
+    if (istErledigt && !zeigeErledigt) return false;
+    if (!istErledigt && !zeigeOffen) return false;
+    return true;
+  });
+
+  if (alleZeilen.length === 0) {
     container.innerHTML = '<div class="empty-hint">Noch keine Maßnahmen für dieses Unternehmen erfasst.</div>';
+    return;
+  }
+  if (zeilen.length === 0) {
+    container.innerHTML = '<div class="empty-hint">Keine Maßnahmen entsprechen der aktuellen Filterauswahl.</div>';
     return;
   }
 
@@ -1094,7 +1133,8 @@ async function renderMassnahmenListe() {
   const heute = formatDateLocal(new Date());
   zeilen.forEach(({ begehung, punkt, massnahme: m }) => {
     const div = document.createElement("div");
-    div.className = "massnahmenliste-item";
+    const istBrandschutz = begehung.meta.art === "Brandschutzbegehung";
+    div.className = `massnahmenliste-item${istBrandschutz ? " massnahmenliste-item--brandschutz" : ""}`;
     const fortschritt = clampFortschritt(m.fortschritt);
     const ueberfaellig = m.zieltermin && m.zieltermin < heute && fortschritt < 100;
     const rNachHtml = m.risikoNach
@@ -1107,7 +1147,7 @@ async function renderMassnahmenListe() {
       </div>
       <p class="massnahmenliste-text">${escapeHtml(m.text)}</p>
       <p class="muted small">Verantwortlich: ${escapeHtml(m.verantwortlicher || "-")} · Frist: ${escapeHtml(FRIST_LABELS[m.frist] || m.frist || "-")} · Zieltermin: ${escapeHtml(formatDateEuropean(m.zieltermin) || "-")} ${rNachHtml}</p>
-      <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${fortschritt}%"></div></div>
+      <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${fortschritt}%; background:${FORTSCHRITT_FARBEN[fortschritt]}"></div></div>
       <div class="form-grid" style="margin-top:8px;">
         <label>Fortschritt
           <select data-begehung="${begehung.id}" data-punkt="${punkt.id}" data-massnahme="${m.id}" data-field="fortschritt">
@@ -1123,7 +1163,7 @@ async function renderMassnahmenListe() {
         <div class="kommentar-liste">
           ${
             (m.kommentare && m.kommentare.length)
-              ? [...m.kommentare].reverse().map(k => `<div class="kommentar-eintrag"><span class="kommentar-datum">${formatDateTimeEuropean(k.datum)}</span> ${escapeHtml(k.text)}</div>`).join("")
+              ? [...m.kommentare].reverse().map(k => `<div class="kommentar-eintrag"><span><span class="kommentar-datum">${formatDateTimeEuropean(k.datum)}</span> ${escapeHtml(k.text)}</span><button type="button" class="kommentar-delete" data-action="delete-kommentar" data-begehung="${begehung.id}" data-punkt="${punkt.id}" data-massnahme="${m.id}" data-kommentar="${k.id}" title="Kommentar löschen">✕</button></div>`).join("")
               : '<p class="muted small">Noch keine Kommentare.</p>'
           }
         </div>
@@ -1487,6 +1527,9 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("tabBtnUnternehmen").addEventListener("click", () => switchTab("unternehmen"));
 
   document.getElementById("massnahmenUnternehmenFilter").addEventListener("change", renderMassnahmenListe);
+  document.getElementById("massnahmenVerantwortlicherFilter").addEventListener("change", renderMassnahmenListe);
+  document.getElementById("massnahmenFilterOffen").addEventListener("change", renderMassnahmenListe);
+  document.getElementById("massnahmenFilterErledigt").addEventListener("change", renderMassnahmenListe);
   document.getElementById("massnahmenListeContainer").addEventListener("change", async (e) => {
     const field = e.target.dataset.field;
     if (!field) return;
@@ -1503,6 +1546,12 @@ window.addEventListener("DOMContentLoaded", () => {
     const input = btn.parentElement.querySelector('[data-action="kommentar-input"]');
     if (!input || !input.value.trim()) return;
     await addMassnahmeKommentar(btn.dataset.begehung, btn.dataset.punkt, btn.dataset.massnahme, input.value);
+    renderMassnahmenListe();
+  });
+  document.getElementById("massnahmenListeContainer").addEventListener("click", async (e) => {
+    const delBtn = e.target.closest('[data-action="delete-kommentar"]');
+    if (!delBtn) return;
+    await removeMassnahmeKommentar(delBtn.dataset.begehung, delBtn.dataset.punkt, delBtn.dataset.massnahme, delBtn.dataset.kommentar);
     renderMassnahmenListe();
   });
   document.getElementById("massnahmenListeContainer").addEventListener("keydown", async (e) => {
