@@ -62,6 +62,28 @@
         <label class="checkbox-label"><input type="checkbox" id="massnahmenFilterErledigt"> Erledigte Maßnahmen</label>
       </div>
     </div>
+
+    <div class="card section-block section-block--blue section-block--tinted" id="schnellMassnahmeCard" hidden>
+      <div class="section-label">✨ Neue Maßnahme ohne Begehung erfassen</div>
+      <label>Maßnahmentext
+        <textarea id="schnellMassnahmeText" rows="2" placeholder="z.B. Handlauf im Treppenhaus reparieren"></textarea>
+      </label>
+      <div class="form-grid">
+        <label>Verantwortlicher
+          <input type="text" id="schnellMassnahmeVerantwortlicher" list="verantwortlicheDatalist" placeholder="Name / Funktion">
+        </label>
+        <label>Frist
+          <select id="schnellMassnahmeFrist">
+            <option value="sofort">Sofort</option>
+            <option value="kurzfristig" selected>Kurzfristig</option>
+            <option value="mittelfristig">Mittelfristig</option>
+            <option value="langfristig">Langfristig</option>
+          </select>
+        </label>
+      </div>
+      <button id="btnSchnellMassnahmeHinzufuegen" class="btn btn-primary">+ Maßnahme hinzufügen</button>
+    </div>
+
     <div id="massnahmenListeContainer"></div>
   </section>
 
@@ -265,12 +287,19 @@
       <input type="file" id="uLogo" accept="image/*">
     </label>
     <div id="uLogoPreview" class="foto-preview"></div>
+
+    <div class="block-label" style="margin-top:14px;">Verantwortliche (für Maßnahmen auswählbar)</div>
+    <div id="verantwortlicheListForm"></div>
+    <button type="button" id="btnAddVerantwortlicher" class="btn btn-ghost">+ Verantwortlichen hinzufügen</button>
+
     <div class="modal-actions">
       <button id="btnUnternehmenCancel" class="btn btn-ghost">Abbrechen</button>
       <button id="btnUnternehmenSave" class="btn btn-primary">Speichern</button>
     </div>
   </div>
 </div>
+
+<datalist id="verantwortlicheDatalist"></datalist>
 
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="app.js"></script>

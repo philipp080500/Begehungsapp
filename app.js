@@ -235,7 +235,7 @@ async function renderBegehungList() {
     const betriebLabel = u ? u.name : (b.meta.betrieb || "(ohne Unternehmen)");
     div.innerHTML = `
       <div class="begehung-item-info">
-        <b>${escapeHtml(bezeichnung(b.meta))}</b>
+        <b>${escapeHtml(bezeichnung(b.meta))}${b.meta.istSammelbegehung ? ' <span class="sammel-badge">Manuelle Maßnahmen</span>' : ""}</b>
         <span class="muted small">${escapeHtml(betriebLabel)} · ${datum} · ${anzahl} Punkt(e)</span>
       </div>
       <div class="begehung-item-actions">
@@ -268,6 +268,26 @@ function escapeHtml(str) {
 let editingUnternehmenId = null; // Unternehmen, das gerade im Modal bearbeitet wird (null = neu)
 let unternehmenLogoDataUrl = null;
 let unternehmenLogoAspect = 1;
+let currentVerantwortliche = []; // Verantwortliche-Entwürfe {id, name, email} im Unternehmen-Modal
+
+function leererVerantwortlicher() {
+  return { id: uid(), name: "", email: "" };
+}
+
+function renderVerantwortlicheForm() {
+  const wrap = document.getElementById("verantwortlicheListForm");
+  wrap.innerHTML = "";
+  currentVerantwortliche.forEach((v, idx) => {
+    const div = document.createElement("div");
+    div.className = "verantwortlicher-row";
+    div.innerHTML = `
+      <input type="text" data-field="name" data-idx="${idx}" value="${escapeHtml(v.name)}" placeholder="Name">
+      <input type="email" data-field="email" data-idx="${idx}" value="${escapeHtml(v.email)}" placeholder="E-Mail">
+      <button type="button" data-action="remove-verantwortlicher" data-idx="${idx}" title="Entfernen">✕</button>
+    `;
+    wrap.appendChild(div);
+  });
+}
 
 function computeImageAspect(dataUrl) {
   return new Promise((resolve) => {
@@ -299,7 +319,7 @@ async function renderUnternehmenList() {
         ${u.logoDataUrl ? `<img class="unternehmen-logo-thumb" src="${u.logoDataUrl}">` : ""}
         <div>
           <b>${escapeHtml(u.name || "(ohne Name)")}</b>
-          <span class="muted small">${escapeHtml(u.ansprechpartner || "")}</span>
+          <span class="muted small">${escapeHtml(u.ansprechpartner || "")}${(u.verantwortliche && u.verantwortliche.length) ? ` · ${u.verantwortliche.length} Verantwortliche${u.verantwortliche.length === 1 ? "r" : ""}` : ""}</span>
         </div>
       </div>
       <div class="begehung-item-actions">
@@ -348,6 +368,10 @@ function openUnternehmenModal(existing) {
   unternehmenLogoDataUrl = existing ? (existing.logoDataUrl || null) : null;
   unternehmenLogoAspect = existing ? (existing.logoAspect || 1) : 1;
   renderUnternehmenLogoPreview();
+  currentVerantwortliche = existing && existing.verantwortliche && existing.verantwortliche.length
+    ? existing.verantwortliche.map(v => ({ ...v }))
+    : [leererVerantwortlicher()];
+  renderVerantwortlicheForm();
   document.getElementById("unternehmenModal").hidden = false;
 }
 
@@ -365,6 +389,9 @@ async function saveUnternehmenFromModal() {
     kontakt: document.getElementById("uKontakt").value.trim(),
     logoDataUrl: unternehmenLogoDataUrl,
     logoAspect: unternehmenLogoAspect,
+    verantwortliche: currentVerantwortliche
+      .filter(v => v.name && v.name.trim())
+      .map(v => ({ id: v.id, name: v.name.trim(), email: (v.email || "").trim() })),
     createdAt: editingUnternehmenId ? undefined : Date.now(),
     updatedAt: Date.now(),
   };
@@ -385,6 +412,15 @@ async function populateUnternehmenSelect() {
   select.innerHTML = '<option value="">— Kein Unternehmen / manuell —</option>' +
     all.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join("");
   if (all.some(u => u.id === currentValue)) select.value = currentValue;
+}
+
+// Befüllt die gemeinsam genutzte <datalist> mit den Verantwortlichen des übergebenen Unternehmens,
+// damit sie als Tipp-Vorschlag (Autocomplete) in "Verantwortlicher"-Feldern erscheinen.
+async function populateVerantwortlicheDatalist(unternehmenId) {
+  const datalist = document.getElementById("verantwortlicheDatalist");
+  const unternehmen = await getUnternehmenById(unternehmenId);
+  const verantwortliche = (unternehmen && unternehmen.verantwortliche) || [];
+  datalist.innerHTML = verantwortliche.map(v => `<option value="${escapeHtml(v.name)}">${escapeHtml(v.email || "")}</option>`).join("");
 }
 
 /* =========================================================
@@ -452,6 +488,7 @@ async function openBegehung(b) {
   document.getElementById("metaDatum").value = b.meta.datum || "";
   document.getElementById("metaBegeher").value = b.meta.begeher || "";
   document.getElementById("metaTeilnehmer").value = b.meta.teilnehmer || "";
+  await populateVerantwortlicheDatalist(b.meta.unternehmenId);
   updateBezeichnungDisplay();
   resetPunktForm();
   renderPunkteList();
@@ -476,6 +513,7 @@ async function createNewBegehung() {
   document.getElementById("metaDatum").value = currentBegehung.meta.datum;
   document.getElementById("metaBegeher").value = "";
   document.getElementById("metaTeilnehmer").value = "";
+  await populateVerantwortlicheDatalist("");
   resetPunktForm();
   renderPunkteList();
   showView("view-begehung");
@@ -580,7 +618,7 @@ function renderMassnahmenForm() {
       </div>
       <textarea rows="2" data-field="text" data-idx="${idx}" placeholder="Maßnahmenbeschreibung">${escapeHtml(m.text)}</textarea>
       <label>Verantwortlicher
-        <input type="text" data-field="verantwortlicher" data-idx="${idx}" value="${escapeHtml(m.verantwortlicher || "")}" placeholder="Name / Funktion">
+        <input type="text" data-field="verantwortlicher" data-idx="${idx}" value="${escapeHtml(m.verantwortlicher || "")}" list="verantwortlicheDatalist" placeholder="Name / Funktion">
       </label>
       <div class="form-grid">
         <label>Frist
@@ -1067,6 +1105,75 @@ async function removeMassnahmeKommentar(begehungId, punktId, massnahmeId, kommen
   await dbPut(begehung);
 }
 
+// Findet die "Sammelbegehung" für manuell erfasste Maßnahmen eines Unternehmens (unternehmenId "" = ohne Unternehmen),
+// legt sie samt Sammelpunkt bei Bedarf neu an. So lassen sich Maßnahmen ohne eigenes Begehungsprotokoll erfassen,
+// bleiben aber im bestehenden Datenmodell (Begehung -> Punkt -> Maßnahmen) und sind ganz normal auch im
+// Begehungen-Reiter auffindbar/editierbar/exportierbar.
+async function getOrCreateSammelpunkt(unternehmenId) {
+  const alleBegehungen = await dbGetAll();
+  let begehung = alleBegehungen.find(b => (b.meta.unternehmenId || "") === (unternehmenId || "") && b.meta.istSammelbegehung);
+  if (!begehung) {
+    const jahr = new Date().getFullYear();
+    const art = "Arbeitsschutzbegehung";
+    const nummer = await suggestNextNummer(art, jahr, unternehmenId);
+    begehung = {
+      id: uid(),
+      meta: { art, jahr, nummer, unternehmenId: unternehmenId || "", betrieb: "", datum: formatDateLocal(new Date()), begeher: "", teilnehmer: "", istSammelbegehung: true },
+      punkte: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+  }
+  let punkt = begehung.punkte.find(p => p.istSammelpunkt);
+  if (!punkt) {
+    punkt = {
+      id: uid(),
+      kategorie: "Sonstige",
+      standort: "Manuell erfasste Maßnahmen",
+      notizRoh: "",
+      befund: "Sammelpunkt für manuell erfasste Maßnahmen ohne eigene Begehung.",
+      risikoInitial: { s: 1, w: 0 },
+      massnahmen: [],
+      fotos: [],
+      createdAt: Date.now(),
+      istSammelpunkt: true,
+    };
+    begehung.punkte.push(punkt);
+  }
+  return { begehung, punkt };
+}
+
+async function addSchnellMassnahme(unternehmenId) {
+  const textEl = document.getElementById("schnellMassnahmeText");
+  const verantwortlicherEl = document.getElementById("schnellMassnahmeVerantwortlicher");
+  const fristEl = document.getElementById("schnellMassnahmeFrist");
+  const text = textEl.value.trim();
+  if (!text) {
+    alert("Bitte einen Maßnahmentext eingeben.");
+    return;
+  }
+  const { begehung, punkt } = await getOrCreateSammelpunkt(unternehmenId === NONE_UNTERNEHMEN_VALUE ? "" : unternehmenId);
+  const frist = fristEl.value;
+  punkt.massnahmen.push({
+    id: uid(),
+    text,
+    verantwortlicher: verantwortlicherEl.value.trim(),
+    frist,
+    zieltermin: berechneZieltermin(begehung.meta.datum, frist),
+    risikoNach: { s: 1, w: 0 },
+    fortschritt: 0,
+    wirksamkeitskontrolle: "",
+    kommentare: [],
+  });
+  begehung.updatedAt = Date.now();
+  await dbPut(begehung);
+
+  textEl.value = "";
+  verantwortlicherEl.value = "";
+  fristEl.value = "kurzfristig";
+  renderMassnahmenListe();
+}
+
 const FORTSCHRITT_FARBEN = { 0: "#d64545", 25: "#e8590c", 50: "#d9a91f", 75: "#8bc34a", 100: "#2f9e44" };
 
 async function populateMassnahmenVerantwortlicherFilter(zeilen) {
@@ -1081,11 +1188,13 @@ async function renderMassnahmenListe() {
   const container = document.getElementById("massnahmenListeContainer");
   const selected = document.getElementById("massnahmenUnternehmenFilter").value;
   container.innerHTML = "";
+  document.getElementById("schnellMassnahmeCard").hidden = !selected;
   if (!selected) {
     container.innerHTML = '<div class="empty-hint">Bitte oben ein Unternehmen wählen, um dessen Maßnahmenliste zu sehen.</div>';
     document.getElementById("massnahmenVerantwortlicherFilter").innerHTML = '<option value="">— Alle —</option>';
     return;
   }
+  await populateVerantwortlicheDatalist(selected === NONE_UNTERNEHMEN_VALUE ? "" : selected);
 
   const alleBegehungen = await dbGetAll();
   const passendeBegehungen = alleBegehungen.filter(b => {
@@ -1458,6 +1567,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (unternehmen && unternehmen.ansprechpartner) teilnehmerInput.value = unternehmen.ansprechpartner;
     }
     document.getElementById("metaNummer").value = "";
+    await populateVerantwortlicheDatalist(unternehmenId);
     await refreshNummerSuggestion();
     persistMeta();
   });
@@ -1528,6 +1638,9 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("massnahmenVerantwortlicherFilter").addEventListener("change", renderMassnahmenListe);
   document.getElementById("massnahmenFilterOffen").addEventListener("change", renderMassnahmenListe);
   document.getElementById("massnahmenFilterErledigt").addEventListener("change", renderMassnahmenListe);
+  document.getElementById("btnSchnellMassnahmeHinzufuegen").addEventListener("click", () => {
+    addSchnellMassnahme(document.getElementById("massnahmenUnternehmenFilter").value);
+  });
   document.getElementById("massnahmenListeContainer").addEventListener("change", async (e) => {
     const field = e.target.dataset.field;
     if (!field) return;
@@ -1575,6 +1688,22 @@ window.addEventListener("DOMContentLoaded", () => {
     } catch (err) {
       console.error("Fehler beim Verarbeiten des Logos", err);
     }
+  });
+  document.getElementById("btnAddVerantwortlicher").addEventListener("click", () => {
+    currentVerantwortliche.push(leererVerantwortlicher());
+    renderVerantwortlicheForm();
+  });
+  document.getElementById("verantwortlicheListForm").addEventListener("input", (e) => {
+    const idx = e.target.dataset.idx;
+    const field = e.target.dataset.field;
+    if (idx === undefined || !field) return;
+    currentVerantwortliche[idx][field] = e.target.value;
+  });
+  document.getElementById("verantwortlicheListForm").addEventListener("click", (e) => {
+    const btn = e.target.closest('[data-action="remove-verantwortlicher"]');
+    if (!btn) return;
+    currentVerantwortliche.splice(Number(btn.dataset.idx), 1);
+    renderVerantwortlicheForm();
   });
 
   if ("serviceWorker" in navigator) {

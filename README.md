@@ -28,11 +28,15 @@ Im Reiter **"Unternehmen"** (oben neben "Begehungen") kannst du beliebig viele U
 
 Bei jeder Begehung kannst du im Feld "Unternehmen" eines davon auswählen. Das PDF-Protokoll übernimmt dann automatisch dessen Logo (statt des globalen `logo.jpg`), Namen, Adresse und Ansprechpartner in der Kopfzeile – ohne die Daten erneut eintippen zu müssen. Ohne Auswahl ("— Kein Unternehmen / manuell —") funktioniert die App wie zuvor mit freier Texteingabe.
 
+Zusätzlich lassen sich pro Unternehmen beliebig viele **Verantwortliche** (Name + E-Mail) hinterlegen. Sie erscheinen danach als Tipp-Vorschlag (Autocomplete) in jedem "Verantwortlicher"-Feld – beim Erfassen einer Maßnahme im Punkt-Formular ebenso wie bei der manuellen Schnellerfassung in der Maßnahmenliste.
+
 ## Maßnahmenliste
 
 Im Reiter **"Maßnahmen"** siehst du eine eigene, laufend pflegbare Liste je Unternehmen (oder "— Ohne Unternehmen —" für manuell erfasste Begehungen) über alle Begehungen dieses Kunden hinweg – ähnlich einer Microsoft-Lists-Ansicht. Fortschritt (0/25/50/75/100 %) und "Wirksamkeitskontrolle durch SiFa" lassen sich direkt in der Liste eintragen, ohne die jeweilige Begehung zu öffnen. Überfällige Maßnahmen (Zieltermin verstrichen, aber noch nicht bei 100 %) werden rot markiert. Das PDF-Protokoll bleibt davon unabhängig das offizielle, unterschriebene Dokument.
 
-Zusätzlich gibt es **nur in dieser Liste** einen chronologischen Kommentarverlauf je Maßnahme ("Verlauf / Kommentare") – für laufende Notizen zum Bearbeitungsstand (z.B. "15.01: Angebot eingeholt", "22.01: Material bestellt"). Jeder Kommentar wird mit Datum/Uhrzeit gespeichert, neueste zuerst, und bleibt beim Bearbeiten des zugehörigen Punkts im normalen Formular unangetastet erhalten.
+Zusätzlich gibt es **nur in dieser Liste** einen chronologischen Kommentarverlauf je Maßnahme ("Verlauf / Kommentare") – für laufende Notizen zum Bearbeitungsstand (z.B. "15.01: Angebot eingeholt", "22.01: Material bestellt"). Jeder Kommentar wird mit Datum/Uhrzeit gespeichert, neueste zuerst, lässt sich einzeln wieder löschen, und bleibt beim Bearbeiten des zugehörigen Punkts im normalen Formular unangetastet erhalten.
+
+**Manuelle Maßnahmen ohne Begehungsprotokoll**: Sobald ein Unternehmen ausgewählt ist, erscheint oben eine Schnellerfassungs-Karte ("+ Neue Maßnahme ohne Begehung erfassen") – Text, Verantwortlicher und Frist reichen, ganz ohne den üblichen Weg über eine vollständige Begehung mit Punkten. Im Hintergrund landet das in einer eigenen, automatisch angelegten Begehung (im Reiter "Begehungen" mit dem Hinweis "Manuelle Maßnahmen" gekennzeichnet), damit alles im gewohnten Datenmodell bleibt und z.B. auch weiterhin als PDF exportierbar ist.
 
 ## Ablauf einer Begehung
 
